@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://code.highcharts.com/highcharts.js"></script>
+        <script src="https://code.highcharts.com/stock/modules/stock.js"></script>
+        <script src="https://code.highcharts.com/modules/exporting.js"></script>
+        
+    </head>
+    <link rel="stylesheet" href="static\style.css" />
+    <body class="background-image"> 
+        <div class="display1">
+            <p class="heading">Stock Search</p>
+            <form class="searchbar">
+                <button  id="search" class="searchbutton" ><img  src="static\search-solid.svg" ></button>
+                <input type="text" id="tickersymbol" placeholder="Enter Stock Ticker Symbol" required/>
+                <button type="button" id="clear" class="clearbutton" type="reset" onclick="clearbutton()"><img src = "static\times-solid.svg" > </button>
+            </form>
+        </div>
+        
+            <div  id="companydetails"> 
+                
+                </div>
+                
+            <div id="displayprofile" class="tabcontent"></div>
+            <div id="displaysummary" class="tabcontent"></div>
+            <div class="charts"><div id="displaychart" class="tabcontent aboutchart" ></div></div>
+            <div id="displaynews" class="tabcontent"></div>
+            <div id="displayerror"></div>
+        
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+                formarea = document.getElementsByClassName("searchbar");
+                entersymbol = document.getElementById('tickersymbol');
+        
+                document.getElementById("search").addEventListener('click', getthevalue);
+                document.getElementById("clear").addEventListener('click',clearbutton)
+                
+            });    
+            function clearbutton(){
+                document.getElementById("tickersymbol").value = ""
+                document.getElementById("companycontent").style.display = "none";
+                document.getElementById("displayprofile").style.display="none";
+                document.getElementById("displaysummary").style.display="none";
+                document.getElementById("displaychart").style.display="none";
+                document.getElementById("displaynews").style.display="none";
+
+            }
+            const symbol = document.getElementById('tickersymbol').value.trim().toUpperCase();
+            
+
+            function getthevalue(event){
+                if (!entersymbol.value.trim()){
+                    entersymbol.reportValidity();
+                    
+    
+                }
+                else{event.preventDefault();
+                const symbol = document.getElementById('tickersymbol').value.trim().toUpperCase();
+        
+                const companydata = fetch(`/displaythecontent?symbol=${symbol}`)
+                .then(response=>{if(!response.ok){
+                    if (response.status==404){
+                        throw new Error("Error: No record has been found, please enter a valid symbol");
+                    }
+                }else
+                { return response.json();}
+                });
+                const newsdata = fetch(`/newscontent?symbol=${symbol}`)
+                .then(response=>{ 
+                    if (response.status==404){
+                        throw new Error("Error: No record has been found, please enter a valid symbol");
+                    }
+                else
+                { return response.json();}
+                });
+                const summarydata = fetch(`/summarycontent?symbol=${symbol}`)
+                .then(response=>{
+                    if (response.status==404){
+                        throw new Error("Error: No record has been found, please enter a valid symbol");
+                    }
+                  else
+                { return response.json();}
+                });
+                const recommendation= fetch(`/recommendationcontent?symbol=${symbol}`)
+                .then(response=>{
+                    if (response.status==404){
+                        throw new Error("Error: No record has been found, please enter a valid symbol");
+                    }
+                else
+                { return response.json();}
+                });
+                const chartdata = fetch(`/chartcontent?symbol=${symbol}`)
+                .then(response=>{
+                    if (response.status==404){
+                        throw new Error("Error: No record has been found, please enter a valid symbol");
+                    }
+                else
+                { return response.json();}}).then(data => data.results);
+                /*Referred stack overflow for line 88 and 89*/
+                Promise.all([companydata,newsdata,summarydata,recommendation,chartdata])
+                .then(([data1,data2,data3,data4,data5]) =>{
+
+
+                companydetails.innerHTML=`<div class="companydetails" id="companycontent" ><button id="company" class="companytab buttontab" onclick ="opentab(event,'displayprofile')">Company</button>
+                <button class="summarytab buttontab" onclick ="opentab(event,'displaysummary')">Stock Summary</button>
+                <button class="charttab buttontab" onclick ="opentab(event,'displaychart')">Charts</button>
+                <button class="newstab buttontab"  onclick ="opentab(event,'displaynews')">Latest News</button></div>`;
+                    
+                document.getElementById("company").click();
+
+                    displayprofile.innerHTML = `
+                            <div class="companyprofile" >
+                            <img class="companylogo" src="${data1.logo}">
+                            <table class="companytable">
+                            <tr class="comapnyrow"><td class="companycol1">Company Name </td><td class="companycol2">${data1.name}</td></tr>
+                            <tr class="comapnyrow"><td class="companycol1">Stock Ticker Symbol</td><td class="companycol2">${data1.ticker}</td><tr>
+                            <tr class="comapnyrow"><td class="companycol1">Stock Exchane Code</td><td class="companycol2">${data1.exchange}</td><tr>
+                            <tr class="comapnyrow"><td class="companycol1">Company Start Date</td><td class="companycol">${data1.ipo}</td><tr>
+                            <tr class="comapnyrow"><td class="companycol1">Category</td><td class="companycol2">${data1.finnhubIndustry}</td><tr>
+                            </table>
+                            </div>`;
+
+
+                    
+                    if((data3.d)>=0 &&(data3.dp)>=0 ){
+
+                        displaysummary.innerHTML = `
+                            <div class="stocksummary">
+                                <table class="summarytable">
+                                <tr><td class="summarycol1">Stock Ticker Symbol</td><td class="summarycol2">${data1.ticker}</td></tr>  
+                                <tr><td class="summarycol1">Trading Day</td><td class="summarycol2">${data3.t}</td><td>
+                                <tr><td class="summarycol1">Previous Closing Price</td><td class="summarycol2">${data3.pc}</td></tr>
+                                <tr><td class="summarycol1">Opening Price</td><td class="summarycol2">${data3.o}</td></tr>
+                                <tr><td class="summarycol1">High Price</td><td class="summarycol2">${data3.h}</td></tr>
+                                <tr><td class="summarycol1">Low Price</td><td class="summarycol2">${data3.l}</td></tr>
+                                <tr><td class="summarycol1">Change</td><td class="summarycol2">${data3.d}<img class="upimage" src="static/GreenArrowUp.png"></td></tr>
+                                <tr><td class="summarycol1">Change Percent</td><td class="summarycol2">${data3.dp}<img class="upimage" src="static/GreenArrowUp.png"></td></tr>
+                                </table>
+                                <p></p>
+                                <table class="rcommendation">
+                                    <tr><td class="strongsell">Strong Sell</td><td class="strongsellcell">${data4[0].strongSell}</td><td class="sellcell">${data4[0].sell}</td><td class="holdcell">${data4[0].hold}</td><td class="buycell">${data4[0].buy}</td><td class="strongbuycell">${data4[0].strongBuy}</td><td class="strongbuy">Strong Buy</td></tr>
+                                </table>
+                                <p class="recommendationtext">Recommendation Trends</p>
+                                </div>`;
+
+                    }
+                    if ((data3.d)<0 &&(data3.dp)>=0) {
+                        displaysummary.innerHTML = `
+                            <div class="stocksummary">
+                                <table class="summarytable">
+                                <tr><td class="summarycol1">Stock Ticker Symbol</td><td class="summarycol2">${data1.ticker}</td></tr>  
+                                <tr><td class="summarycol1">Trading Day</td><td class="summarycol2">${data3.t}</td></tr>
+                                <tr><td class="summarycol1">Previous Closing Price</td><td class="summarycol2">${data3.pc}</td></tr>
+                                <tr><td class="summarycol1">Opening Price</td><td class="summarycol2">${data3.o}</td><tr>
+                                <tr><td class="summarycol1">High Price</td><td class="summarycol2">${data3.h}</td></tr>
+                                <tr><td class="summarycol1">Low Price</td><td class="summarycol2">${data3.l}</td></tr>
+                                <tr><td class="summarycol1">Change</td><td class="summarycol2">${data3.d}<img class="downimage" src="static/RedArrowDown.png"></td></tr>
+                                <tr><td class="summarycol1">Change Percent</td><td class="summarycol2">${data3.dp}<img class="upimage" src="static/GreenArrowUp.png"></td></tr>
+                                </table>
+                                <p></p>
+                                <table class="rcommendation">
+                                    <tr><td class="strongsell">Strong Sell</td><td class="strongsellcell">${data4[0].strongSell}</td><td class="sellcell">${data4[0].sell}</td><td class="holdcell">${data4[0].hold}</td><td class="buycell">${data4[0].buy}</td><td class="strongbuycell">${data4[0].strongBuy}</td><td class="strongbuy">Strong Buy</td></tr>
+                                </table>
+                                <p class="recommendationtext">Recommendation Trends</p>
+                                </div>`;
+                        
+                    }
+
+                    if((data3.d)>=0 &&(data3.dp)<0){
+                        displaysummary.innerHTML = `
+                            <div class="stocksummary">
+                                <table class="summarytable">
+                                <tr><td class="summarycol1">Stock Ticker Symbol</td><td class="summarycol2">${data1.ticker}</td></tr>  
+                                <tr><td class="summarycol1">Trading Day</td><td class="summarycol2">${data3.t}</td></tr> 
+                                <tr><td class="summarycol1">Previous Closing Price</td><td class="summarycol2">${data3.pc}</td></tr> 
+                                <tr><td class="summarycol1">Opening Price</td><td class="summarycol2">${data3.o}</td></tr> 
+                                <tr><td class="summarycol1">High Price</td><td class="summarycol2">${data3.h}</td></tr> 
+                                <tr><td class="summarycol1">Low Price</td><td class="summarycol2">${data3.l}</td></tr> 
+                                <tr><td class="summarycol1">Change</td><td class="summarycol2">${data3.d}<img class="upimage" src="static/GreenArrowUp.png"></td></tr>
+                                <tr><td class="summarycol1">Change Percent</td><td class="summarycol2">${data3.dp}<img class="downimage" src="static/RedArrowDown.png"></td></tr>
+                                </table>
+                                <p></p>
+                                <table class="rcommendation">
+                                    <tr><td class="strongsell">Strong Sell</td><td class="strongsellcell">${data4[0].strongSell}</td><td class="sellcell">${data4[0].sell}</td><td class="holdcell">${data4[0].hold}</td><td class="buycell">${data4[0].buy}</td><td class="strongbuycell">${data4[0].strongBuy}</td><td class="strongbuy">Strong Buy</td></tr>
+                                </table>
+                                <p class="recommendationtext">Recommendation Trends</p>
+                                </div>`;
+
+                    }
+                    if((data3.d)<0 &&(data3.dp)<0){
+                        displaysummary.innerHTML = `
+                            <div class="stocksummary">
+                                <table class="summarytable">
+                                <tr><td class="summarycol1">Stock Ticker Symbol</td><td class="summarycol2">${data1.ticker}</td></tr>  
+                                <tr><td class="summarycol1">Trading Day</td><td class="summarycol2">${data3.t}</td></tr>
+                                <tr><td class="summarycol1">Previous Closing Price</td><td class="summarycol2">${data3.pc}</td></tr>
+                                <tr><td class="summarycol1">Opening Price</td><td class="summarycol2">${data3.o}</td></tr>
+                                <tr><td class="summarycol1">High Price</td><td class="summarycol2">${data3.h}</td></tr>
+                                <tr><td class="summarycol1">Low Price</td><td class="summarycol2">${data3.l}</td></tr>
+                                <tr><td class="summarycol1">Change</td><td class="summarycol2">${data3.d}<img class="downimage" src="static/RedArrowDown.png"></td></tr>
+                                <tr><td class="summarycol1">Change Percent</td><td class="summarycol2">${data3.dp}<img class="downimage" src="static/RedArrowDown.png"></td></tr>
+                                </table>
+                                <p></p>
+                                <table class="rcommendation">
+                                    <tr><td class="strongsell">Strong Sell</td><td class="strongsellcell">${data4[0].strongSell}</td><td class="sellcell">${data4[0].sell}</td><td class="holdcell">${data4[0].hold}</td><td class="buycell">${data4[0].buy}</td><td class="strongbuycell">${data4[0].strongBuy}</td><td class="strongbuy">Strong Buy</td></tr>
+                                </table>
+                                <p class="recommendationtext">Recommendation Trends</p>
+                                </div>`;}
+
+                    
+                       
+                        var chartData = data5.map(bar => [new Date(bar.t).getTime(), parseFloat(bar.c)]);
+                        var volumeData = data5.map(bar => [new Date(bar.t).getTime(), parseFloat(bar.v)]);
+                        Highcharts.stockChart('displaychart',{
+                            chart:{marginTop:0},
+                            navigation:{buttonOptions:{
+                                enabled:true
+                            }},
+                        
+                            rangeSelector:{
+                                buttons:[{
+                                type: 'day',
+                                count: 7,
+                                text: '7d'},
+                            {
+                                type: 'day',
+                                count:15,
+                                text:'15d'},
+                            {
+                                type: 'month',
+                                count: 1,
+                                text:'1m'
+                            },
+                        {
+                            type:'month',
+                            count:3,
+                            text:'3m'
+                        },
+                           {type :'month',
+                        count :6,
+                         text:'6m'}], selected:3, inputEnabled:false},
+                         navigator:{enabled:true},
+                            title:{text:`Stock Price ${data1.ticker} ${new Date().toISOString().split('T')[0]}` },
+                            subtitle:{text:'<a style="color:blue; text-decoration:underline" "href = "https://polygon.io/" >Source: Polygon.io</a>',
+                                    },
+                            navigator:{series:{accessibility:{exposeAsGroupOnly: true}}},
+                            xAxis:{type:'datetime'},
+                            yAxis:[{title:{text:'Stock Price'},
+                                   lables:{format: '{value}'},
+                                   height: '65%',
+                                   width:'100%',
+                                   lineWidth :1,
+                            
+                                   align:'left',
+                                   top:'35%',
+                               min:140,
+                               opposite:false,
+                               offset:0,
+                               marginLeft:0,
+                                marginRight:0,
+                        tickInterval:20,
+                         lineWidth:0},
+                        {
+                                   title:{text:'Volume'},
+                                   labels:{formatter: function(){
+                                    if (this.value>=1000000){
+                                        return this.value/1000000 + 'M'
+                                    }
+                                    return this.value;
+
+                                   } ,
+                                align:'left'},
+                                   opposite:true,
+                                   top:'45%',
+                                   height: '55%',
+                                   offset: 0,
+                                   lineWidth: 1,
+                                   left:'0%',
+                                   zIndex:1,
+                                   min:0,
+                                   tickInterval:60000000,
+                                   startOnTick:true,
+                                   lineWidth:0
+                        
+                                }],
+                            series:[{type: 'area', name: 'Stock Price',data: chartData, yAxis:0, pointPlacement:'on'},
+                            {type: 'column', name: 'Volume', data: volumeData, yAxis:1, color:'black', pointPlacement:'on'}]
+                            });
+
+                /*Referred stack overflow for line 280*/
+                const date1 = new Date(data2[0].datetime*1000);
+                const displaydate1 = date1.toLocaleDateString('en-GB',{day: 'numeric', month: 'long', year: 'numeric'})
+                const [day1, month1, year1] = displaydate1.split(' ');
+                const actualdate1= `${day1} ${month1}, ${year1}`;
+
+                const date2 = new Date(data2[1].datetime*1000);
+                const displaydate2 = date2.toLocaleDateString('en-GB',{day: 'numeric', month: 'long', year: 'numeric'})
+                const [day2, month2, year2] = displaydate2.split(' ');
+                const actualdate2= `${day2} ${month2}, ${year2}`;
+
+                const date3 = new Date(data2[2].datetime*1000);
+                const displaydate3 = date3.toLocaleDateString('en-GB',{day: 'numeric', month: 'long', year: 'numeric'})
+                const [day3, month3, year3] = displaydate3.split(' ');
+                const actualdate3= `${day3} ${month3}, ${year3}`;
+
+                const date4 = new Date(data2[3].datetime*1000);
+                const displaydate4 = date4.toLocaleDateString('en-GB',{day: 'numeric', month: 'long', year: 'numeric'})
+                const [day4, month4, year4] = displaydate4.split(' ');
+                const actualdate4= `${day4} ${month4}, ${year4}`;
+
+                const date5 = new Date(data2[4].datetime*1000);
+                const displaydate5 = date5.toLocaleDateString('en-GB',{day: 'numeric', month: 'long', year: 'numeric'})
+                const [day5, month5, year5] = displaydate5.split(' ');
+                const actualdate5= `${day5} ${month5}, ${year5}`
+
+                
+
+
+                displaynews.innerHTML=`<div class="newsdiv"><div class="data1">    
+                    <img class="newsimg1" src="${data2[0].image}">
+                    <div class="newscontent1">
+                    <p class="newsheading">${data2[0].headline}</p>
+                    <p class="newsdate">${actualdate1}</p>
+                    <a class="newslink" href="${data2[0].url}">See Original Post</a>
+                    <div>
+                    </div>
+                    <div class="data2">    
+                    <img class="newsimg2" src="${data2[1].image}">
+                    <div class="newscontent2">
+                    <p class="newsheading">${data2[1].headline}</p>
+                    <p class="newsdate">${actualdate2}</p>
+                    <a class="newslink" href="${data2[1].url}">See Original Post</a>
+                    </div>
+                    </div>
+                    <div class="data3">    
+                    <img class="newsimg3" src="${data2[2].image}">
+                    <div class="newscontent3">
+                    <p class="newsheading">${data2[2].headline}</p>
+                    <p class="newsdate">${actualdate3}</p>
+                    <a class="newslink" href="${data2[2].url}">See Original Post</a>
+                    </div>
+                    </div>
+                    <div class="data4">    
+                    <img class="newsimg4" src="${data2[3].image}">
+                    <div class="newscontent4">
+                    <p class="newsheading">${data2[3].headline}</p>
+                    <p class="newsdate">${actualdate4}</p>
+                    <a class="newslink" href="${data2[3].url}">See Original Post</a>
+                    </div>
+                    </div>
+                    <div class="data5">    
+                    <img class="newsimg5" src="${data2[4].image}">
+                    <div class="newscontent5">
+                    <p class="newsheading">${data2[4].headline}</p>
+                    <p class="newsdate">${actualdate5}</p>
+                    <a class="newslink" href="${data2[4].url}">See Original Post</a>
+                    </div>
+                 </div></div>`;
+            
+                
+          
+        })
+        .catch(error=>{
+            errormessage(error.message);
+
+        })}}
+        
+        function errormessage(){
+            displayerror.innerhtml=`<div class="errormessage">Error: No record has been found, please enter a valid symbol<div>`
+            document.getElementById("displayerror").textContent=message;
+            document.getElementById("displayerror").style.display = block;
+        }
+
+       
+        /*Referred W3schools for line 363 to line372*/
+        function opentab(event, tab){
+        var i, tabcontent, buttontab;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";}
+        buttontab = document.getElementsByClassName("buttontab");
+        for (i = 0; i < buttontab.length; i++) {
+            buttontab[i].className = buttontab[i].className.replace(" active", "");}
+        document.getElementById(tab).style.display = "block";
+        event.currentTarget.className += " active";}     
+            
+          
+        </script>    
+    </body>
+
+
+</html>
